@@ -14,32 +14,43 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+if not GROQ_API_KEY:
+    raise RuntimeError("Missing GROQ_API_KEY in .env or Render environment")
+
+client = Groq(api_key=GROQ_API_KEY)
+
 app = FastAPI()
 
-# Enable CORS
+# Allow dev + prod frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://fancy-readme-gen.vercel.app"],
+    allow_origins=[
+        "http://localhost:5173",
+        "https://fancy-readme-gen.vercel.app"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Helper: Remove readonly files (Windows fix)
+# Health check route
+@app.get("/")
+def health():
+    return {"status": "ok", "message": "Fancy README backend running"}
+
+# Helpers
 def remove_readonly(func, path, _):
     os.chmod(path, stat.S_IWRITE)
     func(path)
 
-# Helper: Extract ZIP
 def extract_zip(zip_path, extract_to):
     with zipfile.ZipFile(zip_path, "r") as zip_ref:
         zip_ref.extractall(extract_to)
 
-# Helper: Clone GitHub repo
 def clone_github_repo(repo_url, dest_dir):
     os.system(f"git clone --depth 1 {repo_url} {dest_dir}")
 
-# Helper: Read project files
 def read_project_files(project_path):
     content = ""
     for root, _, files in os.walk(project_path):
@@ -53,7 +64,6 @@ def read_project_files(project_path):
                     pass
     return content
 
-# Helper: Extract repo info from URL
 def extract_repo_info(repo_url: str):
     pattern = r"github\.com/([^/]+)/([^/]+?)(?:\.git)?$"
     match = re.search(pattern, repo_url.strip())
@@ -61,7 +71,6 @@ def extract_repo_info(repo_url: str):
         return match.group(1), match.group(2), repo_url.strip()
     return None, None, repo_url.strip()
 
-# Helper: Generate fancy README
 def generate_fancy_readme(project_content, repo_name=None, author_name=None, repo_url=None):
     fancy_prompt = f"""
 Generate ONLY a fully polished README.md for GitHub in valid markdown + minimal HTML.
@@ -85,17 +94,16 @@ It must look like a top-starred open-source project page.
 3️⃣ Features Section:
 - Always a markdown unordered list.
 - Each feature starts with ✅, 🔥, or ⚡ emoji, then **bold title**, colon, short description.
-- Each feature is its own bullet, no paragraphs.
 
 4️⃣ Usage Section:
 - Use syntax-highlighted triple backticks for commands.
 - If commands exist in repo files, list each command separately with a short description above it.
 
 5️⃣ Other Rules:
-- Use tables only for structured data (e.g., feature comparisons).
-- If repo has images/screenshots, show them centered using markdown image links or <img>.
-- End with a call-to-action: "⭐ Star this repo if you like it!" and "Made with ❤️ by {author_name or 'the team'}".
-- No placeholders or fake info. Omit sections with no data.
+- Use tables only for structured data.
+- If repo has images/screenshots, show them centered.
+- End with: "⭐ Star this repo if you like it!" and "Made with ❤️ by {author_name or 'the team'}".
+- No placeholders or fake info. Omit empty sections.
 
 📌 Context:
 Repository name: {repo_name or 'Unknown Project'}
@@ -109,13 +117,6 @@ Repository URL: {repo_url or 'Not provided'}
 Repository content for analysis:
 {project_content[:12000]}
 """
-
-    # Get API key at request time
-    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-    if not GROQ_API_KEY:
-        raise HTTPException(status_code=500, detail="Missing GROQ_API_KEY in environment")
-
-    client = Groq(api_key=GROQ_API_KEY)
 
     chat_completion = client.chat.completions.create(
         model="llama3-70b-8192",
@@ -138,7 +139,6 @@ async def generate_readme(file: UploadFile = File(None), repo_url: str = Form(No
             repo_dir = os.path.join(temp_dir, "repo")
             clone_github_repo(repo_url, repo_dir)
             project_path = repo_dir
-
         elif file:
             zip_path = os.path.join(temp_dir, file.filename)
             with open(zip_path, "wb") as buffer:
@@ -158,7 +158,6 @@ async def generate_readme(file: UploadFile = File(None), repo_url: str = Form(No
             except:
                 repo_name = "Unknown Project"
             author_name = "Unknown Author"
-
         else:
             return {"error": "No file or repo URL provided"}
 
@@ -183,7 +182,11 @@ async def progress_stream():
             "🤖 Asking AI to write README...",
             "✅ README ready!"
         ]
-        for step in steps:
-            yield f"data: {step}\n\n"
-            time.sleep(1)
+        try:
+            for step in steps:
+                yield f"data: {step}\n\n"
+                time.sleep(1)
+        except GeneratorExit:
+            # Client disconnected
+            return
     return StreamingResponse(event_stream(), media_type="text/event-stream")
