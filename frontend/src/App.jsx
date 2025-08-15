@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 
 export default function App() {
@@ -10,19 +10,23 @@ export default function App() {
   const [logs, setLogs] = useState([]);
   const eventSourceRef = useRef(null);
 
+  // Auto-select API URL based on environment
+  const API_BASE =
+    import.meta.env.MODE === "development"
+      ? "http://localhost:8000"
+      : "https://fancy-readme-backend.onrender.com";
+
   const handleGenerate = async () => {
     setLoading(true);
     setError("");
     setReadme("");
     setLogs([]);
 
-    // Start listening to progress
+    // Start listening to backend progress stream
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
     }
-    eventSourceRef.current = new EventSource(
-      "http://localhost:8000/progress-stream"
-    );
+    eventSourceRef.current = new EventSource(`${API_BASE}/progress-stream`);
     eventSourceRef.current.onmessage = (event) => {
       setLogs((prev) => [...prev, event.data]);
     };
@@ -32,13 +36,10 @@ export default function App() {
     if (repoUrl) formData.append("repo_url", repoUrl);
 
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/generate-readme`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const res = await fetch(`${API_BASE}/generate-readme`, {
+        method: "POST",
+        body: formData,
+      });
 
       const data = await res.json();
 
