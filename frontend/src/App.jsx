@@ -22,20 +22,23 @@ export default function App() {
     setReadme("");
     setLogs([]);
 
-    // Start listening to backend progress stream
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
-    eventSourceRef.current = new EventSource(`${API_BASE}/progress-stream`);
-    eventSourceRef.current.onmessage = (event) => {
-      setLogs((prev) => [...prev, event.data]);
-    };
-
-    const formData = new FormData();
-    if (file) formData.append("file", file);
-    if (repoUrl) formData.append("repo_url", repoUrl);
-
     try {
+      // Ping backend to wake it up
+      await fetch(`${API_BASE}/`, { method: "GET" });
+
+      // Start listening to backend progress stream
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+      eventSourceRef.current = new EventSource(`${API_BASE}/progress-stream`);
+      eventSourceRef.current.onmessage = (event) => {
+        setLogs((prev) => [...prev, event.data]);
+      };
+
+      const formData = new FormData();
+      if (file) formData.append("file", file);
+      if (repoUrl) formData.append("repo_url", repoUrl);
+
       const res = await fetch(`${API_BASE}/generate-readme`, {
         method: "POST",
         body: formData,
