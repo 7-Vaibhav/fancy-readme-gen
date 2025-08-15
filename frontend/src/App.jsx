@@ -32,10 +32,13 @@ export default function App() {
     if (repoUrl) formData.append("repo_url", repoUrl);
 
     try {
-      const res = await fetch("http://localhost:8000/generate-readme", {
-        method: "POST",
-        body: formData,
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/generate-readme`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
       const data = await res.json();
 
