@@ -14,7 +14,7 @@ export default function App() {
   const API_BASE =
     import.meta.env.MODE === "development"
       ? "http://localhost:8000"
-      : "https://fancy-readme-backend.onrender.com";
+      : "https://fancy-readme-gen.onrender.com";
 
   const handleGenerate = async () => {
     setLoading(true);
