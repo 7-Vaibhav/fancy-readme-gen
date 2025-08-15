@@ -5,7 +5,7 @@ import shutil
 import stat
 import re
 import time
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from groq import Groq
@@ -14,18 +14,12 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-if not GROQ_API_KEY:
-    raise ValueError("Missing GROQ_API_KEY in .env")
-
-client = Groq(api_key=GROQ_API_KEY)
-
 app = FastAPI()
 
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Change to frontend URL in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -116,6 +110,13 @@ Repository content for analysis:
 {project_content[:12000]}
 """
 
+    # Get API key at request time
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    if not GROQ_API_KEY:
+        raise HTTPException(status_code=500, detail="Missing GROQ_API_KEY in environment")
+
+    client = Groq(api_key=GROQ_API_KEY)
+
     chat_completion = client.chat.completions.create(
         model="llama3-70b-8192",
         messages=[{"role": "user", "content": prompt}],
@@ -133,15 +134,12 @@ async def generate_readme(file: UploadFile = File(None), repo_url: str = Form(No
         final_repo_url = None
 
         if repo_url:
-            # Extract repo details
             author_name, repo_name, final_repo_url = extract_repo_info(repo_url)
-            # Clone repo
             repo_dir = os.path.join(temp_dir, "repo")
             clone_github_repo(repo_url, repo_dir)
             project_path = repo_dir
 
         elif file:
-            # Save and extract ZIP
             zip_path = os.path.join(temp_dir, file.filename)
             with open(zip_path, "wb") as buffer:
                 buffer.write(await file.read())
@@ -154,7 +152,6 @@ async def generate_readme(file: UploadFile = File(None), repo_url: str = Form(No
             extract_zip(zip_path, extract_dir)
             project_path = extract_dir
 
-            # Guess repo name from folder name
             try:
                 first_folder = os.listdir(extract_dir)[0]
                 repo_name = first_folder
@@ -165,10 +162,7 @@ async def generate_readme(file: UploadFile = File(None), repo_url: str = Form(No
         else:
             return {"error": "No file or repo URL provided"}
 
-        # Read files
         project_content = read_project_files(project_path)
-
-        # Generate README
         readme_content = generate_fancy_readme(project_content, repo_name, author_name, final_repo_url)
 
         return {"readme": readme_content}
@@ -191,5 +185,5 @@ async def progress_stream():
         ]
         for step in steps:
             yield f"data: {step}\n\n"
-            time.sleep(1)  # simulate processing
+            time.sleep(1)
     return StreamingResponse(event_stream(), media_type="text/event-stream")
