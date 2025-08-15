@@ -1,4 +1,5 @@
-fastapi
-uvicorn
-python-dotenv
-groq
+fastapi==0.116.1
+uvicorn==0.35.0
+python-dotenv==1.0.1
+groq==0.31.0
+python-multipart==0.0.20
