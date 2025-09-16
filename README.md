@@ -17,25 +17,56 @@
 ### 🚀 Features
 - **⚙️ Auto-generate:** Quickly create professional READMEs for any GitHub project.
 - **💻 Multi-language support:** Works with Python & JavaScript projects seamlessly.
-- **🌐 Web-based:** No installation needed, use directly via browser.
+- **🌐 Web-based UI:** Built with React + Vite for fast, responsive experience.
 - **🛠 Lightweight:** Fast, efficient, and open-source.
 
 ---
 
 ### 📦 Installation
-Clone the repo:
-```bash
+Clone the repository:
+```
 git clone https://github.com/7-vaibhav/fancy-readme-gen.git
 cd fancy-readme-gen
 ```
 
-Install dependencies for frontend & backend (if any).
+Install backend dependencies:
+
+```
+pip install -r requirements.txt
+```
+
+Install frontend dependencies:
+
+```
+cd frontend
+npm install
+```
 
 ---
 
 ### ⚙️ Usage
 
-Open [fancy-readme-gen.vercel.app](https://fancy-readme-gen.vercel.app) in your browser and start generating your README.
+1. **Start the backend (Python)**:
+
+```
+uvicorn main:app --reload
+```
+
+Backend runs at `http://localhost:8000`.
+
+2. **Start the frontend (React + Vite)**:
+
+```
+cd frontend
+npm run dev
+```
+
+Frontend will open at the Vite default URL (usually `http://localhost:5173`).
+
+3. **Generate README**:
+
+* Fill in your project details in the web interface.
+* Click **Generate** to download your customized README file.
 
 ---
 
@@ -63,5 +94,4 @@ Licensed under MIT License. See [LICENSE](https://github.com/7-vaibhav/fancy-rea
 <p align="center">
   Made with ❤️ by Vaibhav
 </p>
-
----
+```
