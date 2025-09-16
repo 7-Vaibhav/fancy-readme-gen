@@ -94,4 +94,3 @@ Licensed under MIT License. See [LICENSE](https://github.com/7-vaibhav/fancy-rea
 <p align="center">
   Made with ❤️ by Vaibhav
 </p>
-```
